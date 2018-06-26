@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>DEMO 3 IA</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+</head>
+<body ng-app="demoIA" ng-controller="demoCtrl">
+<div class="container">
+    <h2>Demo Inteligencia Artificial - Trabajo Practico N3 (AG)</h2>
+
+    <form id="formIA" class="form-horizontal" role="form" ng-submit="executeGA()">
+        <div class="form-group">
+        <label for="queens">Cantidad de Reinas (Tablero NxN):</label>
+        <input type=number class="form-control" id="queens" name="queens" ng-model="inputs.n_queens" min=8 max=100 required/>
+        </div>
+        <div class="form-group">
+            <label for="poblation">Tamaño de Poblacion:</label>
+            <input type=number class="form-control" id="poblation" name="poblation" ng-model="inputs.poblation_count" min=10 max=2000 required/>
+        </div>
+        <div class="form-group">
+            <label for="generations">Numero maximo de Iteraciones:</label>
+            <input type=number class="form-control" id="generations" name="generations" ng-model="inputs.max_generations" min=1 max=10000 required/>
+        </div>
+        <div class="form-group">
+            <label for="mutation">Probabilidad de Mutacion:</label>
+            <input type=number class="form-control" id="mutation" name="mutation" ng-model="inputs.p_mutations" min=0 max=1 step=0.01 required/>
+        </div>
+        <hr>
+        <div class="form-group">
+            <label for="f_method">Metodo de Corte temprano (mejor padre temporal):</label>
+            <input type=number class="form-control" id="f_method" name="f_method" ng-model="inputs.f_method" min=0 max=50/>
+        </div>
+        <div class="form-group">
+            <label for="selection_type">Tipo de Seleccion:</label>
+            <select class="form-control" id="selection_type" name="selection_type" ng-model="inputs.selection_type" required/>
+                <option value="1">Elitista</option>
+                <option value="2">Ruleta</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="crossover_point">Tipo de CrossOver:</label>
+            <select class="form-control" id="crossover_point" name="crossover_point" ng-model="inputs.crossover_point" required/>
+                <option value="1">Single-Point</option>
+                <option value="2">Multi-Point</option>
+            </select>
+        </div>
+        <div class="form-group">        
+        <div class="col-sm-2">
+            <button type="submit" class="btn btn-primary">Ejecutar</button>
+        </div>
+        </div>
+    </form>
+
+    <div class="alert alert-info" ng-show="result">
+        <strong>RESULTS</strong> 
+        <pre>{{ result }}</pre>
+    </div>
+
+    <div class="row" ng-show="result">
+        <h4>Tablero {{result.values.length}}x{{result.values.length}}</h4>
+        <table class="table-bordered text-center">
+            <tr ng-repeat="val in result.values track by $index">
+                <td ng-repeat="queen in result.genes track by $index" width="50" height="50">
+                    <span class="glyphicon glyphicon-queen" 
+                        ng-if="(result.values.length - $parent.$index) === queen.row && ($index + 1) === queen.column" 
+                        ng-style="{'color': (queen.free ? 'green' : 'red')}"></span>
+                </td>
+            </tr>   
+        </table>
+    </div>
+</div>
+
+<script>
+    const app = angular.module('demoIA', []); 
+    app.controller('demoCtrl', function ($scope, $http) {
+        
+        const apiHost = (window.location.hostname === 'localhost') ? 'localhost' : '190.226.151.22';
+
+        $scope.inputs = {
+            n_queens: 8,
+            poblation_count: 100,
+            max_generations: 5000,
+            p_mutations: 0.02,
+            f_method: 0,
+            selection_type: '1',
+            crossover_point: '1'
+        }
+        $scope.result = null
+
+        $scope.executeGA = function () {
+            cleanResults()
+            const req = angular.copy($scope.inputs)
+            req.selection_type = parseInt(req.selection_type)
+            req.crossover_point = parseInt(req.crossover_point)
+            $http({
+                method : 'POST',
+                url : 'http://'+apiHost+':8080/solution',
+                data: req
+            }).then(function (response) {
+                $scope.result = response.data.data
+            });
+        }
+
+        const cleanResults = function () {
+            $scope.result = null
+        }
+    })
+</script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>DEMOS IA</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <h2>Demos Inteligencia Artificial</h2>
+    <br>
+  <div class="row">
+    <div class="col-lg-3 col-lg-offset-3">
+        <a href="./tp2.html" class="btn btn-lg btn-danger">Trabajo Practico N2</a>
+    </div>
+    <div class="col-lg-3 col-lg-offset-1">
+        <a href="./tp3.html" class="btn btn-lg btn-danger">Trabajo Practico N3</a>
+    </div>
+  </div>
+</div>
+
+<script>
+    const app = angular.module('demoIA', []); 
+    app.controller('demoCtrl', function ($scope, $http) {
+
+        const classifierID = 'ab2f65x344-nlc-830'
+        const watsonAPI = 'https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/'+classifierID+'/classify'
+        
+        // Diccionario de posibles alternativas de malas palabras ofensivas, insultos, etc...
+        const insultStemWords = {
+            'estupido': [ 'estupido', 'estupida', 'estupidos', 'estupidas' ],
+            'imbecil': [ 'imbecil', 'imbeciles' ],
+            'tarado': [ 'tarado', 'tarada', 'tarados', 'taradas', 'taradito' ],
+            'gay': [ 'gay', 'homosexual', 'lesbiana', 'maricon', 'marica', 'maricones', 'maraca' ],
+            'culo': [ 'culo', 'orto', 'pedo', 'oyo' ],
+            'mierda': [ 'mierda', 'mierdas', 'mierdita' ],
+            'gil': [ 'gil', 'giles' ],
+            'verga': [ 'verga', 'vergas', 'poronga', 'porongas' ],
+            'pelotudo': [ 'pelotudo', 'pelotuda', 'pelotudos', 'pelotudas', 'pelotudito', 'pelotuditos', 'pelotudita', 'pelotuditas' ],
+            'boludo': [ 'boludo', 'boluda', 'boludos', 'boludas', 'boludito', 'boluditos', 'boluditas', 'boludita' ],
+            'puto': [ 'puto', 'puta', 'putos', 'putas', 'putito', 'putitos', 'putita', 'putitas', 'hdp', 'hdmp', 'hijodeputa', 'lpm', 'lrpm', 'putear' ],
+            'pingo': [ 'pingo', 'pingos' ],
+            'culiao': [ 'culiao', 'qliao', 'culiado', 'culiaos', 'culiados', 'qliaos', 'culiadito', 'culiaditos', 'culiar' ],
+            'pete': [ 'pete', 'petes', 'petero', 'petera', 'peteras', 'pt' ],
+            'cajeta': [ 'cajeta', 'cajetudo', 'cajetuda', 'cajetudos', 'cajetudas' ],
+            'ura': [ 'ura', 'uras', 'ures', 'ure', 'urita', 'uritas' ],
+            'choto': [ 'choto', 'chotos', 'chota', 'chotas', 'chotisimo', 'chotito', 'chotita' ],
+            'pajero': [ 'pajero', 'pajera', 'pajeros', 'pajeras' ],
+            'concha': [ 'conchudo', 'conchuda', 'conchudos', 'conchudas', 'conchas' ],
+            'cagada': [ 'cagada', 'cagador', 'cagar', 'cagon', 'cagona', 'cagones', 'cagonas', 'cagoncito', 'cagoncitos', 'cagoncita', 'cagoncitas' ],
+            'garca': [ 'garca', 'garcas', 'garcha','falluto', 'falluta', 'fallutos', 'fallutas' ],
+            'choro': [ 'choro', 'chora', 'choros', 'choras', 'estafador' ],
+            'corrupto': [ 'corrupto', 'corruptos', 'corrupta', 'corruptas' ],
+            'mafia': [ 'mafia', 'mafioso', 'mafiosa', 'mafiosos', 'mafiosas' ],
+            'borracho': [ 'borracho', 'machao', 'mamado', 'chupador' ]
+        }
+        
+        $scope.comment = ''
+        $scope.insultPredetected = false
+        $scope.result = null
+        $scope.status = null
+        $scope.scoreAllowed = 0
+        $scope.scoreNotAllowed = 0
+
+        $scope.classifyText = function () {
+            cleanResults()
+            if ($scope.comment !== '' && $scope.comment.trim().length > 0) {
+                let text = angular.copy($scope.comment.trim())
+                text = detectInsultWords(text)
+                $http({
+                    method : 'POST',
+                    url : watsonAPI,
+                    headers: { 
+                        'Authorization': getBasicAuth(),
+                        'Content-Type': 'application/json' 
+                    },
+                    data: { text }
+                }).then(function (response) {
+                    $scope.result = response.data
+                    $scope.scoreAllowed = parseInt(response.data.classes.find((x) => x.class_name === 'allowed').confidence * 100)
+                    $scope.scoreNotAllowed = parseInt(response.data.classes.find((x) => x.class_name === 'not_allowed').confidence * 100)
+                    if ($scope.scoreNotAllowed >= 70 || $scope.insultPredetected) {
+                        $scope.status = 'Su comentario no es admitido'
+                    } else if ($scope.scoreNotAllowed > 50 && $scope.scoreNotAllowed < 70) {
+                        $scope.status = 'Su comentario se encuentra en revision'
+                    } else {
+                        $scope.status = 'Su comentario si es admitido'
+                    }
+                });
+            }
+        }
+
+        const getBasicAuth = function () {
+            const user = '36c50636-6514-49a6-b80e-67b3e5fe0071'
+            const password = 'igYBUcGM4aSi'
+            const auth = 'Basic ' + btoa(user + ':' + password) // Basic MzZjNTA2MzYtNjUxNC00OWE2LWI4MGUtNjdiM2U1ZmUwMDcxOmlnWUJVY0dNNGFTaQ==
+            return auth
+        }
+
+        const detectInsultWords = function (text) {
+            const keyInsults = Object.keys(insultStemWords)
+            const words = text.toLowerCase().replace(/[^a-z ]/g, '').split(' ')
+            words.forEach((word, index) => {
+                const insult = keyInsults.find((stem) => {
+                    return insultStemWords[stem].indexOf(word) > -1
+                })
+                if (insult) {
+                    words[index] = insult
+                    $scope.insultPredetected = true
+                }
+            })
+            const processedText = words.join(' ')
+            return processedText
+        }
+
+        const cleanResults = function () {
+            $scope.result = null
+            $scope.status = null
+            $scope.insultPredetected = false
+            $scope.scoreAllowed = 0
+            $scope.scoreNotAllowed = 0
+        }
+    })
+</script>
+</body>
+</html>
